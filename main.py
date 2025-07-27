@@ -1,16 +1,34 @@
 import os
 import argparse
 import ast
-import astor
 import logging
 from openai import OpenAI, OpenAIError
+
+# Importiere das neue Modul für die Dokumentationserstellung
+import doc_generator
+
+# Importiere astor oder verwende ast.unparse falls verfügbar (Python 3.9+)
+try:
+    import astor
+
+    _use_astor = True
+except ImportError:
+    _use_astor = False
+    # Prüfe, ob ast.unparse verfügbar ist (Python 3.9+)
+    if not hasattr(ast, "unparse"):
+        raise ImportError(
+            "Das Modul 'astor' ist nicht installiert und 'ast.unparse' ist nicht verfügbar. "
+            "Bitte installiere 'astor' oder verwende Python 3.9 oder höher."
+        )
 
 # --- Konfiguration ---
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 # Standard-Modell (kann über CLI überschrieben werden)
-DEFAULT_MODEL = "granite3.3:8b"  # Passe dies an, falls dein Modell anders heißt
+DEFAULT_MODEL = (
+    "freehuntx/qwen3-coder:8b"  # Passe dies an, falls dein Modell anders heißt
+)
 # Standard-Endpunkt (kann über CLI überschrieben werden)
 # Ersetze dies ggf. durch die tatsächliche URL deines lokalen Endpunkts
 DEFAULT_BASE_URL = "http://localhost:11434/v1"  # Beispiel für einen lokalen Endpunkt
@@ -217,7 +235,11 @@ class DocstringAdder(ast.NodeTransformer):
             modified_tree = self.visit(tree)  # Startet den Besuchsprozess
             if self.modified:
                 ast.fix_missing_locations(modified_tree)
-                return astor.to_source(modified_tree)
+                # Verwende ast.unparse (Python 3.9+) oder astor, je nach Verfügbarkeit
+                if _use_astor:
+                    return astor.to_source(modified_tree)
+                else:
+                    return ast.unparse(modified_tree)
             else:
                 logging.debug(
                     f"Keine Änderungen am AST für '{self.filename}' vorgenommen."
@@ -344,6 +366,11 @@ def main():
         action="store_true",
         help="Ausführlichere Log-Ausgaben (DEBUG Level)",
     )
+    parser.add_argument(
+        "--doc-output-dir",
+        default=None,
+        help="Verzeichnis für die generierte Sphinx/MkDocs-kompatible Dokumentation (optional).",
+    )
     # parser.add_argument("--overwrite", action="store_true", help="Überschreibt auch vorhandene Docstrings (Standard: nur fehlende hinzufügen)") # Zukünftige Option
 
     args = parser.parse_args()
@@ -390,6 +417,19 @@ def main():
     logging.info(
         f"Verarbeitung abgeschlossen. {processed_count} .py-Dateien verarbeitet (von {file_count} gefundenen)."
     )
+
+    # Generiere Sphinx/MkDocs-kompatible Dokumentation, falls ein Ausgabeverzeichnis angegeben wurde
+    if args.doc_output_dir:
+        logging.info(
+            f"Starte Generierung der Sphinx/MkDocs-Dokumentation in '{args.doc_output_dir}'..."
+        )
+        try:
+            doc_generator.generate_docs(args.start_dir, args.doc_output_dir)
+            logging.info("Sphinx/MkDocs-Dokumentation erfolgreich generiert.")
+        except Exception as e:
+            logging.error(
+                f"Fehler bei der Generierung der Sphinx/MkDocs-Dokumentation: {e}"
+            )
 
 
 # Korrekte Einrückung für den if __name__ == "__main__": Block

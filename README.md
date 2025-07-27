@@ -75,6 +75,12 @@ Using Verbose Mode for Detailed Logs:
 python main.py /path/to/your/project -v
 ```
 
+Generating Sphinx/MkDocs compatible documentation in addition to adding docstrings:
+
+```bash
+python main.py /path/to/your/project --doc-output-dir /path/to/output/docs
+```
+
 The script will log its progress, indicating which files are being processed, which functions/classes are getting docstrings generated, and any errors encountered. At the end, it will summarize the number of files processed.
 
 ## How it Works
@@ -110,4 +116,4 @@ The script will log its progress, indicating which files are being processed, wh
 
 ## License
 
-AGPLv3 as written in LICENSE.md 
+MIT as written in LICENSE.md
